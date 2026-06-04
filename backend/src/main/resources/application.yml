@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: billing-platform
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/saas_billing}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:user@saas.com}
+    password: ${SMTP_PASSWORD:secret}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Custom Application Config Properties
+app:
+  jwt:
+    secret: ${JWT_SECRET:9a4f2c8d3e7b1a5c8d6e3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c}
+    expiration-ms: 86400000 # 24 hours
+    refresh-expiration-ms: 604800000 # 7 days
+  stripe:
+    api-key: ${STRIPE_API_KEY:sk_test_mock_key_51Osaasbillingplatformmockkey}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_mock_webhook_secret_key_for_testing}
+  tax:
+    home-state: "MH" # State code for home tax matching
+    cgst-rate: 9.0   # 9% CGST
+    sgst-rate: 9.0   # 9% SGST
+    igst-rate: 18.0  # 18% IGST
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
+
+logging:
+  level:
+    root: INFO
+    com.saas.billing: DEBUG
+    org.springframework.security: INFO

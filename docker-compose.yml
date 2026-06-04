@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: saas_database
+    environment:
+      POSTGRES_DB: saas_billing
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saas_billing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=jdbc:postgresql://database:5432/saas_billing
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
+      - JWT_SECRET=9a4f2c8d3e7b1a5c8d6e3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c
+      - STRIPE_API_KEY=sk_test_mock_key_51Osaasbillingplatformmockkey
+      - STRIPE_WEBHOOK_SECRET=whsec_mock_webhook_secret_key_for_testing
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saas_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

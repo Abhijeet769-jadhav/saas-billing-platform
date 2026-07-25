@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Settings as SettingsIcon, CheckCircle, Save, Landmark } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Settings = () => {
   const { user, updateOrgDetails } = useAuth();
@@ -24,16 +24,16 @@ const Settings = () => {
   const loadSettings = async () => {
     try {
       const [orgRes, setRes] = await Promise.all([
-        axios.get('/api/organizations/current'),
-        axios.get('/api/organizations/settings')
+        api.get('/api/organizations/current'),
+        api.get('/api/organizations/settings')
       ]);
 
-      setOrgName(orgRes.data.name);
-      setBillingEmail(setRes.data.billingEmail || '');
-      setCountry(setRes.data.country || 'US');
-      setCurrency(setRes.data.currency || 'USD');
-      setGstin(setRes.data.gstin || '');
-      setTaxRegistrationNumber(setRes.data.taxRegistrationNumber || '');
+      setOrgName(orgRes.data?.name || '');
+      setBillingEmail(setRes.data?.billingEmail || '');
+      setCountry(setRes.data?.country || 'US');
+      setCurrency(setRes.data?.currency || 'USD');
+      setGstin(setRes.data?.gstin || '');
+      setTaxRegistrationNumber(setRes.data?.taxRegistrationNumber || '');
     } catch (e) {
       console.error('Failed to load settings', e);
     } finally {
@@ -48,14 +48,14 @@ const Settings = () => {
 
     try {
       // 1. Update Organization Metadata name
-      const orgRes = await axios.put('/api/organizations/current', {
+      const orgRes = await api.put('/api/organizations/current', {
         name: orgName,
-        slug: orgName.toLowerCase().replaceAll("[^a-z0-9]", "-")
+        slug: orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')
       });
       updateOrgDetails(orgRes.data);
 
       // 2. Update Settings
-      await axios.put('/api/organizations/settings', {
+      await api.put('/api/organizations/settings', {
         billingEmail,
         country,
         currency,
@@ -67,6 +67,7 @@ const Settings = () => {
       setTimeout(() => setMsg(''), 4000);
     } catch (e) {
       console.error('Failed to save settings', e);
+      setMsg('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Tag, Landmark, Sparkles, Receipt } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Billing = () => {
   const [settings, setSettings] = useState(null);
@@ -17,11 +17,11 @@ const Billing = () => {
   const loadBillingData = async () => {
     try {
       const [setRes, histRes] = await Promise.all([
-        axios.get('/api/organizations/settings'),
-        axios.get('/api/payments/history')
+        api.get('/api/organizations/settings').catch(() => ({ data: null })),
+        api.get('/api/payments/history').catch(() => ({ data: [] }))
       ]);
       setSettings(setRes.data);
-      setHistory(histRes.data);
+      setHistory(Array.isArray(histRes.data) ? histRes.data : []);
     } catch (e) {
       console.error('Failed to load billing metrics', e);
     } finally {

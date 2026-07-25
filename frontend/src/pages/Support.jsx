@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HelpCircle, AlertCircle, CheckCircle, Send, FileText } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Support = () => {
   const [tickets, setTickets] = useState([]);
@@ -18,8 +18,8 @@ const Support = () => {
 
   const fetchTickets = async () => {
     try {
-      const res = await axios.get('/api/tickets');
-      setTickets(res.data);
+      const res = await api.get('/api/tickets');
+      setTickets(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Failed to load tickets', e);
     } finally {
@@ -33,17 +33,18 @@ const Support = () => {
     setSuccess('');
 
     try {
-      const res = await axios.post('/api/tickets', {
+      const res = await api.post('/api/tickets', {
         subject,
         description,
         priority
       });
-      setSuccess('Support ticket submitted successfully! Our developers will contact you shortly.');
+      setSuccess('Support ticket submitted successfully! Our team will contact you shortly.');
       setSubject('');
       setDescription('');
       setTickets(prev => [res.data, ...prev]);
     } catch (err) {
       console.error('Failed to create ticket', err);
+      setSuccess('');
     } finally {
       setSubmitting(false);
     }

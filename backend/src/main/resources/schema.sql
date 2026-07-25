@@ -289,7 +289,36 @@ INSERT INTO plan_features (plan_id, feature_key, feature_value) VALUES
 ('a2222222-2222-2222-2222-222222222222', 'max_storage_gb', '100'),
 ('a2222222-2222-2222-2222-222222222222', 'api_calls_limit', '100000'),
 
-('c3333333-3333-3333-3333-333333333333', 'max_users', '999999'), -- Unlimited
+('c3333333-3333-3333-3333-333333333333', 'max_users', '999999'),
 ('c3333333-3333-3333-3333-333333333333', 'max_storage_gb', '10000'),
 ('c3333333-3333-3333-3333-333333333333', 'api_calls_limit', '10000000')
 ON CONFLICT (plan_id, feature_key) DO NOTHING;
+
+-- Seed default admin organization
+INSERT INTO organizations (id, name, slug) VALUES
+('00000000-0000-0000-0000-000000000001', 'Admin Organization', 'admin-org')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed admin user (password = Admin@123 bcrypt hash)
+-- Email: admin@billing.local | Password: Admin@123
+INSERT INTO users (id, email, password_hash, first_name, last_name, email_verified, is_active) VALUES
+('00000000-0000-0000-0000-000000000002',
+ 'admin@billing.local',
+ '$2b$12$5A9FAnrHzdfuF4mHcaofw.MRAH1Imjq/0zWtzpvDhLF1Di/PdH5/2',
+ 'Admin', 'User', TRUE, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+-- Link admin user to admin org with ROLE_ADMIN
+INSERT INTO organization_members (id, organization_id, user_id, role_id) VALUES
+('00000000-0000-0000-0000-000000000003',
+ '00000000-0000-0000-0000-000000000001',
+ '00000000-0000-0000-0000-000000000002',
+ 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed organization settings for admin org
+INSERT INTO settings (id, organization_id, billing_email, country, currency) VALUES
+('00000000-0000-0000-0000-000000000004',
+ '00000000-0000-0000-0000-000000000001',
+ 'admin@billing.local', 'IN', 'USD')
+ON CONFLICT (id) DO NOTHING;

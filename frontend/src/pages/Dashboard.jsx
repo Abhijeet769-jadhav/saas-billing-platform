@@ -7,7 +7,7 @@ import {
 } from 'chart.js';
 import { CreditCard, ShieldCheck, Activity, Users, Download, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -26,14 +26,14 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       const [subRes, usageRes, invRes] = await Promise.all([
-        axios.get('/api/subscriptions'),
-        axios.get('/api/usage/current'),
-        axios.get('/api/invoices')
+        api.get('/api/subscriptions').catch(() => ({ data: null })),
+        api.get('/api/usage/current').catch(() => ({ data: [] })),
+        api.get('/api/invoices').catch(() => ({ data: [] }))
       ]);
 
       setSubscription(subRes.data);
-      setUsage(usageRes.data);
-      setInvoices(invRes.data.slice(0, 5)); // Load top 5
+      setUsage(Array.isArray(usageRes.data) ? usageRes.data : []);
+      setInvoices(Array.isArray(invRes.data) ? invRes.data.slice(0, 5) : []);
     } catch (e) {
       console.error('Failed to load dashboard metrics', e);
     } finally {
@@ -232,7 +232,7 @@ const Dashboard = () => {
                     </td>
                     <td className="py-4 text-right">
                       <a
-                        href={`/api/invoices/${inv.id}/download`}
+                        href={`${import.meta.env.VITE_API_URL || ''}/api/invoices/${inv.id}/download`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-semibold"
                       >
                         <Download size={12} /> Download

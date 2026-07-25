@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, ShieldAlert, Sparkles, Server } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Usage = () => {
   const [usage, setUsage] = useState([]);
@@ -12,8 +12,8 @@ const Usage = () => {
 
   const fetchUsageData = async () => {
     try {
-      const res = await axios.get('/api/usage/current');
-      setUsage(res.data);
+      const res = await api.get('/api/usage/current');
+      setUsage(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Failed to load usage limits', e);
     } finally {

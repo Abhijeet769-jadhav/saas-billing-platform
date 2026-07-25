@@ -4,6 +4,7 @@ services:
   database:
     image: postgres:15-alpine
     container_name: saas_database
+    restart: unless-stopped
     environment:
       POSTGRES_DB: saas_billing
       POSTGRES_USER: postgres
@@ -23,28 +24,43 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: saas_backend
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       - DATABASE_URL=jdbc:postgresql://database:5432/saas_billing
       - DATABASE_USERNAME=postgres
       - DATABASE_PASSWORD=postgres
-      - JWT_SECRET=9a4f2c8d3e7b1a5c8d6e3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c
-      - STRIPE_API_KEY=sk_test_mock_key_51Osaasbillingplatformmockkey
-      - STRIPE_WEBHOOK_SECRET=whsec_mock_webhook_secret_key_for_testing
+      - JWT_SECRET=${JWT_SECRET:-9a4f2c8d3e7b1a5c8d6e3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c}
+      - STRIPE_API_KEY=${STRIPE_API_KEY:-sk_test_mock_key_51Osaasbillingplatformmockkey}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_mock_webhook_secret_key_for_testing}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-noreply@example.com}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-changeme}
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/plans || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=
     container_name: saas_frontend
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:

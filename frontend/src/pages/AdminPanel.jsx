@@ -5,7 +5,7 @@ import {
   ArcElement, Title, Tooltip, Legend 
 } from 'chart.js';
 import { Shield, Sparkles, Download, HelpCircle, Users, Percent, CheckCircle } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
@@ -22,12 +22,12 @@ const AdminPanel = () => {
   const loadAdminData = async () => {
     try {
       const [analyticsRes, ticketsRes] = await Promise.all([
-        axios.get('/api/analytics/platform'),
-        axios.get('/api/tickets/all')
+        api.get('/api/analytics/platform').catch(() => ({ data: null })),
+        api.get('/api/tickets/all').catch(() => ({ data: [] }))
       ]);
 
       setAnalytics(analyticsRes.data);
-      setTickets(ticketsRes.data);
+      setTickets(Array.isArray(ticketsRes.data) ? ticketsRes.data : []);
     } catch (e) {
       console.error('Failed to load admin analytics', e);
     } finally {
@@ -38,7 +38,7 @@ const AdminPanel = () => {
   const handleResolveTicket = async (ticketId) => {
     setSuccess('');
     try {
-      await axios.post(`/api/tickets/${ticketId}/resolve`);
+      await api.post(`/api/tickets/${ticketId}/resolve`);
       setSuccess('Support ticket resolved successfully!');
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' } : t));
       setTimeout(() => setSuccess(''), 4000);
@@ -97,7 +97,7 @@ const AdminPanel = () => {
           <p className="text-slate-400 text-xs mt-1">Global platform metrics, revenue streams, and tenant audits</p>
         </div>
         <a
-          href="/api/analytics/export"
+          href={`${import.meta.env.VITE_API_URL || ''}/api/analytics/export`}
           className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/10 transition-all"
         >
           <Download size={14} /> Export Revenue CSV

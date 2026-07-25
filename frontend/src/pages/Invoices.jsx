@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Mail, Search, FileText, CheckCircle } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -16,8 +16,8 @@ const Invoices = () => {
 
   const fetchInvoices = async () => {
     try {
-      const res = await axios.get('/api/invoices');
-      setInvoices(res.data);
+      const res = await api.get('/api/invoices');
+      setInvoices(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Failed to load invoices', e);
     } finally {
@@ -28,7 +28,7 @@ const Invoices = () => {
   const handleEmailInvoice = async (id) => {
     setSuccessMsg('');
     try {
-      await axios.post(`/api/invoices/${id}/email`);
+      await api.post(`/api/invoices/${id}/email`);
       setSuccessMsg('Invoice notification email dispatched successfully!');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (e) {
@@ -151,7 +151,7 @@ const Invoices = () => {
                         <Mail size={12} /> Email
                       </button>
                       <a
-                        href={`/api/invoices/${inv.id}/download`}
+                        href={`${import.meta.env.VITE_API_URL || ''}/api/invoices/${inv.id}/download`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all font-semibold"
                       >
                         <Download size={12} /> Download

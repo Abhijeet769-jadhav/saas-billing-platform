@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Check, CreditCard, Sparkles } from 'lucide-react';
-import axios from 'axios';
+import { Check, CreditCard, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
+import api from '../services/api';
 
 const Plans = () => {
   const { user } = useAuth();
@@ -18,10 +18,10 @@ const Plans = () => {
   const loadPlansAndSub = async () => {
     try {
       const [plansRes, subRes] = await Promise.all([
-        axios.get('/api/plans'),
-        axios.get('/api/subscriptions')
+        api.get('/api/plans'),
+        api.get('/api/subscriptions').catch(() => ({ data: null }))
       ]);
-      setPlans(plansRes.data);
+      setPlans(Array.isArray(plansRes.data) ? plansRes.data : []);
       setSubscription(subRes.data);
     } catch (e) {
       console.error('Failed to load plans', e);
@@ -33,23 +33,23 @@ const Plans = () => {
   const handleSubscribe = async (planId) => {
     setSubscribingId(planId);
     try {
-      // Direct post checkout request linking stripe redirection
-      const successUrl = `${window.location.origin}/dashboard`;
-      const cancelUrl = `${window.location.origin}/plans`;
-
-      const res = await axios.post(`/api/payments/checkout`, null, {
-        params: {
-          planId,
-          successUrl,
-          cancelUrl
-        }
-      });
-
-      // Redirect user to Stripe sandbox checkout URL
-      window.location.href = res.data;
+      if (!subscription) {
+        // New subscription
+        await api.post('/api/subscriptions/subscribe', { planId });
+        alert('✅ Subscribed successfully! Refreshing...');
+      } else {
+        // Upgrade or downgrade
+        const currentAmount = plans.find(p => p.id === subscription.planId)?.amount || 0;
+        const newAmount = plans.find(p => p.id === planId)?.amount || 0;
+        const endpoint = newAmount >= currentAmount ? '/api/subscriptions/upgrade' : '/api/subscriptions/downgrade';
+        await api.post(endpoint, { planId });
+        alert('✅ Plan changed successfully! Refreshing...');
+      }
+      await loadPlansAndSub();
     } catch (e) {
-      console.error('Checkout creation failed', e);
-      alert('Stripe redirect creation failed. Please check backend sandbox state.');
+      console.error('Plan change failed', e);
+      alert('❌ Plan change failed: ' + (e.response?.data?.message || e.message));
+    } finally {
       setSubscribingId(null);
     }
   };

@@ -4,23 +4,28 @@ server:
 spring:
   application:
     name: billing-platform
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/saas_billing}
     username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    password: ${DATABASE_PASSWORD:Abhi302}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: false
+      ddl-auto: update          # Keep for internship project
+    open-in-view: false
+    show-sql: false             # Changed
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false       # Changed
+
   sql:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+
   mail:
     host: ${SMTP_HOST:smtp.gmail.com}
     port: ${SMTP_PORT:587}
@@ -37,20 +42,21 @@ spring:
           timeout: 3000
           writetimeout: 5000
 
-# Custom Application Config Properties
 app:
   jwt:
     secret: ${JWT_SECRET:9a4f2c8d3e7b1a5c8d6e3f2a1b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c}
-    expiration-ms: 86400000 # 24 hours
-    refresh-expiration-ms: 604800000 # 7 days
+    expiration-ms: 86400000
+    refresh-expiration-ms: 604800000
+
   stripe:
     api-key: ${STRIPE_API_KEY:sk_test_mock_key_51Osaasbillingplatformmockkey}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_mock_webhook_secret_key_for_testing}
+
   tax:
-    home-state: "MH" # State code for home tax matching
-    cgst-rate: 9.0   # 9% CGST
-    sgst-rate: 9.0   # 9% SGST
-    igst-rate: 18.0  # 18% IGST
+    home-state: MH
+    cgst-rate: 9.0
+    sgst-rate: 9.0
+    igst-rate: 18.0
 
 springdoc:
   api-docs:
@@ -62,14 +68,21 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.saas.billing: DEBUG
-    org.springframework.security: INFO
+    com.saas.billing: INFO                  # Changed
+    org.springframework.security: INFO      # Changed
+    org.hibernate.SQL: WARN                 # Changed
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN  # Changed
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info                # Changed
+
   endpoint:
     health:
       show-details: always
+
+  health:
+    mail:
+      enabled: false

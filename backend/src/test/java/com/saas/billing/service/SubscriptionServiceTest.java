@@ -3,6 +3,7 @@ package com.saas.billing.service;
 import com.saas.billing.dto.SubscriptionChangeRequest;
 import com.saas.billing.dto.SubscriptionDto;
 import com.saas.billing.entity.*;
+import com.saas.billing.exception.ResourceNotFoundException;
 import com.saas.billing.repository.*;
 import com.saas.billing.serviceImpl.SubscriptionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class SubscriptionServiceTest {
+class SubscriptionServiceTest {
 
     @Mock
     private SubscriptionRepository subscriptionRepository;
@@ -50,6 +51,7 @@ public class SubscriptionServiceTest {
 
     @BeforeEach
     void setUp() {
+
         organization = Organization.builder()
                 .id(UUID.randomUUID())
                 .name("Acme Corp")
@@ -59,7 +61,7 @@ public class SubscriptionServiceTest {
         basicPlan = Plan.builder()
                 .id(UUID.randomUUID())
                 .name("Basic Plan")
-                .amount(BigDecimal.valueOf(19.00))
+                .amount(BigDecimal.valueOf(19))
                 .billingInterval("monthly")
                 .trialPeriodDays(14)
                 .features(new ArrayList<>())
@@ -68,17 +70,18 @@ public class SubscriptionServiceTest {
         proPlan = Plan.builder()
                 .id(UUID.randomUUID())
                 .name("Pro Plan")
-                .amount(BigDecimal.valueOf(49.00))
+                .amount(BigDecimal.valueOf(49))
                 .billingInterval("monthly")
                 .features(new ArrayList<>())
                 .build();
 
-        // Add features to basic plan
-        basicPlan.getFeatures().add(PlanFeature.builder()
-                .plan(basicPlan)
-                .featureKey("max_users")
-                .featureValue("5")
-                .build());
+        basicPlan.getFeatures().add(
+                PlanFeature.builder()
+                        .plan(basicPlan)
+                        .featureKey("max_users")
+                        .featureValue("5")
+                        .build()
+        );
 
         subscription = Subscription.builder()
                 .id(UUID.randomUUID())
@@ -91,52 +94,143 @@ public class SubscriptionServiceTest {
     }
 
     @Test
-    void testSubscribe_Success_NewSubscription() {
-        when(organizationRepository.findById(organization.getId())).thenReturn(Optional.of(organization));
-        when(planRepository.findById(basicPlan.getId())).thenReturn(Optional.of(basicPlan));
-        when(subscriptionRepository.findByOrganizationId(organization.getId())).thenReturn(Optional.empty());
-        when(subscriptionRepository.save(any(Subscription.class))).thenReturn(subscription);
+    void shouldCreateNewSubscriptionSuccessfully() {
 
-        SubscriptionChangeRequest request = new SubscriptionChangeRequest(basicPlan.getId(), null);
-        SubscriptionDto result = subscriptionService.subscribe(organization.getId(), request);
+        when(organizationRepository.findById(organization.getId()))
+                .thenReturn(Optional.of(organization));
+
+        when(planRepository.findById(basicPlan.getId()))
+                .thenReturn(Optional.of(basicPlan));
+
+        when(subscriptionRepository.findByOrganizationId(organization.getId()))
+                .thenReturn(Optional.empty());
+
+        when(subscriptionRepository.save(any(Subscription.class)))
+                .thenReturn(subscription);
+
+        SubscriptionDto result = subscriptionService.subscribe(
+                organization.getId(),
+                new SubscriptionChangeRequest(basicPlan.getId(), null)
+        );
 
         assertNotNull(result);
         assertEquals("TRIAL", result.getStatus());
         assertEquals("Basic Plan", result.getPlanName());
-        verify(subscriptionRepository, times(1)).save(any(Subscription.class));
-        verify(subscriptionHistoryRepository, times(1)).save(any(SubscriptionHistory.class));
+
+        verify(subscriptionRepository).save(any(Subscription.class));
+        verify(subscriptionHistoryRepository).save(any(SubscriptionHistory.class));
     }
 
     @Test
-    void testUpgrade_Success() {
-        when(subscriptionRepository.findByOrganizationId(organization.getId())).thenReturn(Optional.of(subscription));
-        when(planRepository.findById(proPlan.getId())).thenReturn(Optional.of(proPlan));
-        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    void shouldThrowExceptionWhenOrganizationDoesNotExist() {
 
-        SubscriptionChangeRequest request = new SubscriptionChangeRequest(proPlan.getId(), null);
-        SubscriptionDto result = subscriptionService.upgrade(organization.getId(), request);
+        when(organizationRepository.findById(any()))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                subscriptionService.subscribe(
+                        UUID.randomUUID(),
+                        new SubscriptionChangeRequest(basicPlan.getId(), null)
+                ));
+
+        verify(subscriptionRepository, never()).save(any());
+    }
+
+    @Test
+void shouldUpgradeExistingSubscriptionWhenAlreadySubscribed() {
+
+    when(organizationRepository.findById(organization.getId()))
+            .thenReturn(Optional.of(organization));
+
+    when(planRepository.findById(proPlan.getId()))
+            .thenReturn(Optional.of(proPlan));
+
+    when(subscriptionRepository.findByOrganizationId(organization.getId()))
+            .thenReturn(Optional.of(subscription));
+
+    when(subscriptionRepository.save(any(Subscription.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+    SubscriptionDto result = subscriptionService.subscribe(
+            organization.getId(),
+            new SubscriptionChangeRequest(proPlan.getId(), null)
+    );
+
+    assertNotNull(result);
+    assertEquals("ACTIVE", result.getStatus());
+    assertEquals("Pro Plan", result.getPlanName());
+
+    verify(subscriptionRepository).save(any(Subscription.class));
+    verify(subscriptionHistoryRepository).save(any(SubscriptionHistory.class));
+}
+
+  
+    @Test
+    void shouldUpgradeSubscriptionSuccessfully() {
+
+        when(subscriptionRepository.findByOrganizationId(organization.getId()))
+                .thenReturn(Optional.of(subscription));
+
+        when(planRepository.findById(proPlan.getId()))
+                .thenReturn(Optional.of(proPlan));
+
+        when(subscriptionRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        SubscriptionDto result = subscriptionService.upgrade(
+                organization.getId(),
+                new SubscriptionChangeRequest(proPlan.getId(), null)
+        );
 
         assertNotNull(result);
         assertEquals("ACTIVE", result.getStatus());
         assertEquals("Pro Plan", result.getPlanName());
-        verify(subscriptionHistoryRepository, times(1)).save(any(SubscriptionHistory.class));
+
+        verify(subscriptionHistoryRepository).save(any(SubscriptionHistory.class));
     }
 
     @Test
-    void testVerifyAccess_UnderLimit_ReturnsTrue() {
-        when(subscriptionRepository.findByOrganizationId(organization.getId())).thenReturn(Optional.of(subscription));
+    void shouldReturnTrueWhenUsageIsWithinPlanLimit() {
 
-        // Under user limit of 5 (e.g. current usage is 3)
-        boolean hasAccess = subscriptionService.verifyAccess(organization.getId(), "max_users", 3);
-        assertTrue(hasAccess);
+        when(subscriptionRepository.findByOrganizationId(organization.getId()))
+                .thenReturn(Optional.of(subscription));
+
+        boolean access = subscriptionService.verifyAccess(
+                organization.getId(),
+                "max_users",
+                3
+        );
+
+        assertTrue(access);
     }
 
     @Test
-    void testVerifyAccess_OverLimit_ReturnsFalse() {
-        when(subscriptionRepository.findByOrganizationId(organization.getId())).thenReturn(Optional.of(subscription));
+    void shouldReturnFalseWhenUsageExceedsPlanLimit() {
 
-        // Over limit of 5 (e.g. current usage is 6)
-        boolean hasAccess = subscriptionService.verifyAccess(organization.getId(), "max_users", 6);
-        assertFalse(hasAccess);
+        when(subscriptionRepository.findByOrganizationId(organization.getId()))
+                .thenReturn(Optional.of(subscription));
+
+        boolean access = subscriptionService.verifyAccess(
+                organization.getId(),
+                "max_users",
+                6
+        );
+
+        assertFalse(access);
     }
+
+   @Test
+void shouldReturnFalseWhenFeatureDoesNotExist() {
+
+    when(subscriptionRepository.findByOrganizationId(organization.getId()))
+            .thenReturn(Optional.of(subscription));
+
+    boolean access = subscriptionService.verifyAccess(
+            organization.getId(),
+            "unknown_feature",
+            999
+    );
+
+    assertFalse(access);
+}
 }

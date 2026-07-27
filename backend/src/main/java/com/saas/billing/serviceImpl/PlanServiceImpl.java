@@ -22,15 +22,17 @@ public class PlanServiceImpl implements PlanService {
 
     private final PlanRepository planRepository;
 
-    @Override
-    public List<PlanDto> getAllPlans() {
-        return planRepository.findByIsActiveTrue().stream()
-                .map(DtoMapper::toPlanDto)
-                .collect(Collectors.toList());
-    }
+   @Override
+@Transactional(readOnly = true)
+public List<PlanDto> getAllPlans() {
+    return planRepository.findByIsActiveTrue().stream()
+            .map(DtoMapper::toPlanDto)
+            .collect(Collectors.toList());
+}
 
-    @Override
-    public PlanDto getPlanById(UUID planId) {
+   @Override
+@Transactional(readOnly = true)
+public PlanDto getPlanById(UUID planId) {
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new ResourceNotFoundException("Plan not found"));
         return DtoMapper.toPlanDto(plan);

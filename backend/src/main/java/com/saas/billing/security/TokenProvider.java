@@ -11,6 +11,8 @@ import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class TokenProvider {
@@ -18,6 +20,8 @@ public class TokenProvider {
     private final Key jwtSecretKey;
     private final long jwtExpirationMs;
     private final long jwtRefreshExpirationMs;
+    private static final Logger log =
+        LoggerFactory.getLogger(TokenProvider.class);
 
     public TokenProvider(
             @Value("${app.jwt.secret}") String jwtSecret,
@@ -86,8 +90,8 @@ public class TokenProvider {
             Jwts.parserBuilder().setSigningKey(jwtSecretKey).build().parseClaimsJws(authToken);
             return true;
         } catch (JwtException | IllegalArgumentException ex) {
-            // Log security parsing error
-        }
+    log.warn("Invalid JWT: {}", ex.getMessage());
+}
         return false;
     }
 }

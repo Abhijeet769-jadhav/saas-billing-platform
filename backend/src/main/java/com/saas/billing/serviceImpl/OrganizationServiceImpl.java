@@ -36,14 +36,18 @@ public class OrganizationServiceImpl implements OrganizationService {
     public OrganizationDto updateOrganization(UUID organizationId, OrganizationDto dto) {
         Organization org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+
         org.setName(dto.getName());
+
         Organization saved = organizationRepository.save(org);
         return DtoMapper.toOrganizationDto(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserDto> getMembers(UUID organizationId) {
-        return organizationMemberRepository.findByOrganizationId(organizationId).stream()
+        return organizationMemberRepository.findByOrganizationId(organizationId)
+                .stream()
                 .map(member -> DtoMapper.toUserDto(member.getUser()))
                 .collect(Collectors.toList());
     }
@@ -51,13 +55,16 @@ public class OrganizationServiceImpl implements OrganizationService {
     @Override
     @Transactional
     public void addMember(UUID organizationId, String email, String roleName) {
+
         Organization org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User with email " + email + " not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User with email " + email + " not found"));
 
-        if (organizationMemberRepository.existsByOrganizationIdAndUserId(organizationId, user.getId())) {
+        if (organizationMemberRepository.existsByOrganizationIdAndUserId(
+                organizationId, user.getId())) {
             throw new BadRequestException("User is already a member of this organization");
         }
 
@@ -76,8 +83,11 @@ public class OrganizationServiceImpl implements OrganizationService {
     @Override
     @Transactional
     public void removeMember(UUID organizationId, UUID userId) {
-        OrganizationMember member = organizationMemberRepository.findByOrganizationIdAndUserId(organizationId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Membership not found"));
+
+        OrganizationMember member = organizationMemberRepository
+                .findByOrganizationIdAndUserId(organizationId, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Membership not found"));
 
         organizationMemberRepository.delete(member);
     }
@@ -85,13 +95,16 @@ public class OrganizationServiceImpl implements OrganizationService {
     @Override
     public Settings getSettings(UUID organizationId) {
         return settingsRepository.findByOrganizationId(organizationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Settings not found for this organization"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Settings not found for this organization"));
     }
 
     @Override
     public Settings updateSettings(UUID organizationId, Settings settings) {
+
         Settings dbSettings = settingsRepository.findByOrganizationId(organizationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Settings not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Settings not found"));
 
         dbSettings.setTaxRegistrationNumber(settings.getTaxRegistrationNumber());
         dbSettings.setGstin(settings.getGstin());

@@ -1,157 +1,264 @@
 # 💳 SaaS Billing & Subscription Management Platform
 
-A production-ready, full-stack billing system inspired by **Stripe Billing**, **Chargebee**, and **Zuora**. Manage subscriptions, generate invoices, track usage, and handle payments — all from a beautiful dashboard.
+A full-stack SaaS Billing & Subscription Management System built with **Spring Boot**, **React**, and **PostgreSQL**. The platform enables organizations to manage subscription plans, billing, invoices, payments, and usage tracking through a secure REST API.
 
 ---
 
-## ✨ Features
+# ✨ Features
 
-| Category | Features |
-|----------|----------|
-| **Auth** | JWT login/register, role-based access (Admin, Organization, User), password reset |
-| **Subscriptions** | Subscribe, upgrade, downgrade, pause, resume, cancel — with full history |
-| **Plans** | 3 tiers (Basic $19, Pro $49, Enterprise $299), feature limits per plan |
-| **Invoices** | Auto-generated invoices, PDF download, email dispatch, GST/tax calculation |
-| **Usage Tracking** | Metered feature usage (API calls, storage, users) with limit enforcement |
-| **Payments** | Stripe integration (mock mode included), payment history, refunds, retries |
-| **Billing** | Coupon codes, tax profiles (GSTIN/GST), multi-currency support |
-| **Admin Panel** | MRR/ARR analytics, plan distribution charts, support ticket management |
-| **Support** | Ticket system with priority levels and resolution workflow |
-| **Settings** | Organization profile, billing email, country/currency, tax registration |
+## Authentication & Authorization
+- JWT Authentication
+- Role-Based Access Control (Admin, Organization, User)
+- User Registration & Login
+- Password Reset
+
+## Subscription Management
+- Create and manage subscription plans
+- Subscribe to plans
+- Upgrade/Downgrade subscriptions
+- Pause & Resume subscriptions
+- Cancel subscriptions
+- Subscription history
+
+## Billing & Invoicing
+- Automatic invoice generation
+- PDF invoice download
+- Email invoice notifications
+- GST/Tax calculation
+
+## Payment Management
+- Stripe integration (Test/Mock Mode)
+- Payment history
+- Refund support
+- Payment retry handling
+
+## Usage Tracking
+- API usage monitoring
+- Storage usage tracking
+- User limit enforcement
+
+## Organization Management
+- Organization profile
+- Billing settings
+- Currency & Country configuration
+- GST registration
+
+## Admin Dashboard
+- Monthly Revenue Analytics
+- Annual Revenue Analytics
+- Plan Distribution
+- User Management
+- Support Ticket Management
+
+## API Documentation
+- Swagger/OpenAPI Integration
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   React UI   │────▶│  Spring Boot │────▶│  PostgreSQL  │
-│  (Vite/TW)   │     │   REST API   │     │   Database   │
-│  Port 3000   │     │  Port 8080   │     │  Port 5432   │
-└──────────────┘     └──────────────┘     └──────────────┘
-                           │
-                     ┌─────┴─────┐
-                     │  Stripe   │
-                     │ (Mock/API)│
-                     └───────────┘
-```
+# 🏗️ Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite, TailwindCSS, Chart.js, Lucide Icons |
-| Backend | Spring Boot 3.2, Spring Security, JPA/Hibernate, JWT |
-| Database | PostgreSQL 15 |
-| Payments | Stripe Java SDK (mock mode by default) |
-| Docs | Swagger/OpenAPI via SpringDoc |
-| Deploy | Docker Compose (local) / Render (cloud) |
+|--------|------------|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Spring Boot 3.2, Spring Security, Spring Data JPA |
+| Database | PostgreSQL |
+| Authentication | JWT |
+| Documentation | Swagger (SpringDoc) |
+| Payment Gateway | Stripe Java SDK |
+| PDF Generation | OpenPDF |
+| Email | Spring Mail |
 
 ---
 
-## 🚀 Quick Start (Docker — 1 command)
+# 🏛️ Architecture
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
-
-### Start
-```powershell
-.\start.ps1
 ```
-
-This builds everything and opens your browser. That's it.
-
-### Default Admin Login
-| Field | Value |
-|-------|-------|
-| Email | `admin@billing.local` |
-| Password | `Admin@123` |
-
-### URLs
-| Service | URL |
-|---------|-----|
-| App | http://localhost:3000 |
-| API | http://localhost:8080 |
-| Swagger | http://localhost:8080/swagger-ui.html |
-
-### Stop
-```powershell
-.\stop.ps1
+React Frontend
+      │
+      ▼
+Spring Boot REST API
+      │
+      ▼
+ PostgreSQL Database
+      │
+      ▼
+Stripe (Test Mode)
 ```
 
 ---
 
-## ☁️ Deploy to Render (Free)
-
-1. Push to GitHub
-2. Go to [Render Dashboard](https://dashboard.render.com) → **New → Blueprint**
-3. Connect your repo — Render reads `render.yaml` automatically
-4. Set `VITE_API_URL` on the frontend to your backend URL
-5. Done! 🎉
-
----
-
-## 📁 Project Structure
+# 📁 Project Structure
 
 ```
-saas-billing-platform/
-├── backend/                    # Spring Boot API
-│   ├── src/main/java/com/saas/billing/
-│   │   ├── config/             # Security config
-│   │   ├── controller/         # REST endpoints
-│   │   ├── dto/                # Request/Response DTOs
-│   │   ├── entity/             # JPA entities (21 tables)
-│   │   ├── repository/         # Spring Data repositories
-│   │   ├── security/           # JWT filter, UserDetails
-│   │   ├── service/            # Service interfaces
-│   │   └── serviceImpl/        # Business logic
-│   └── src/main/resources/
-│       ├── application.yml     # App configuration
-│       └── schema.sql          # DB schema + seed data
-├── frontend/                   # React + Vite app
-│   └── src/
-│       ├── components/         # Navbar, Sidebar
-│       ├── context/            # Auth context (JWT)
-│       ├── pages/              # All 11 pages
-│       └── services/           # API client (axios)
-├── docker-compose.yml          # Local Docker setup
-├── render.yaml                 # Render cloud deployment
-├── .env.example                # Environment template
-├── start.ps1                   # Windows start script
-├── stop.ps1                    # Windows stop script
-├── TESTING_GUIDE.md            # Full testing walkthrough
-└── README.md                   # This file
+billing-platform
+│
+├── backend
+│   ├── config
+│   ├── controller
+│   ├── dto
+│   ├── entity
+│   ├── exception
+│   ├── mapper
+│   ├── repository
+│   ├── security
+│   ├── service
+│   ├── serviceImpl
+│   └── resources
+│
+├── frontend
+│
+└── README.md
 ```
 
 ---
 
-## 🧪 Testing
+# 🚀 Getting Started
 
-See [TESTING_GUIDE.md](TESTING_GUIDE.md) for complete step-by-step instructions covering:
-- Authentication flows
-- Subscription management
-- Invoice generation & download
-- Usage tracking
-- Admin analytics
-- Swagger API testing
-- Render deployment verification
+## Prerequisites
+
+- Java 17
+- Maven
+- PostgreSQL
+- Node.js (Frontend)
 
 ---
 
-## ⚙️ Configuration
+## Backend Setup
 
-Copy `.env.example` to `.env` and configure:
+Clone the repository.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection | `jdbc:postgresql://localhost:5432/saas_billing` |
-| `JWT_SECRET` | Token signing key | Pre-set for dev |
-| `STRIPE_API_KEY` | Stripe secret key | Mock key (no charges) |
-| `SMTP_HOST` | Email server | `smtp.gmail.com` |
-| `SMTP_USERNAME` | Email address | Optional |
-| `SMTP_PASSWORD` | Email password | Optional |
-| `VITE_API_URL` | Backend URL for frontend | Empty (proxy mode) |
+```bash
+git clone <repository-url>
+```
+
+Navigate to backend.
+
+```bash
+cd backend
+```
+
+Create PostgreSQL database.
+
+```
+saas_billing
+```
+
+Update `application.yml` or environment variables.
+
+Run the application.
+
+```bash
+mvn spring-boot:run
+```
+
+Backend runs at:
+
+```
+http://localhost:8080
+```
 
 ---
 
-## 📄 License
+## Frontend Setup
 
-MIT
+Navigate to frontend.
+
+```bash
+cd frontend
+```
+
+Install dependencies.
+
+```bash
+npm install
+```
+
+Run the frontend.
+
+```bash
+npm run dev
+```
+
+Frontend runs at:
+
+```
+http://localhost:5173
+```
+
+---
+
+# 📚 API Documentation
+
+Swagger UI
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+OpenAPI
+
+```
+http://localhost:8080/api-docs
+```
+
+---
+
+# 🔧 Configuration
+
+Configure the following environment variables.
+
+| Variable | Description |
+|----------|-------------|
+| DATABASE_URL | PostgreSQL URL |
+| DATABASE_USERNAME | Database Username |
+| DATABASE_PASSWORD | Database Password |
+| JWT_SECRET | JWT Secret |
+| STRIPE_API_KEY | Stripe API Key |
+| STRIPE_WEBHOOK_SECRET | Stripe Webhook Secret |
+| SMTP_HOST | Mail Host |
+| SMTP_USERNAME | Mail Username |
+| SMTP_PASSWORD | Mail Password |
+
+---
+
+# 🧪 Testing
+
+The backend can be tested using:
+
+- Swagger UI
+- Postman
+- REST Client
+- JUnit Tests
+
+---
+
+# 🔐 Security
+
+- JWT Authentication
+- BCrypt Password Encryption
+- Role-Based Authorization
+- Global Exception Handling
+- Input Validation
+
+---
+
+# 📈 Future Improvements
+
+- Docker Deployment
+- Flyway Database Migration
+- Refresh Token Rotation
+- Email Verification
+- CI/CD Pipeline
+- Automated Integration Tests
+
+---
+
+# 👨‍💻 Author
+
+Developed as an Internship Project demonstrating enterprise-level backend development using Spring Boot.
+
+---
+
+# 📄 License
+
+This project is licensed under the MIT License.

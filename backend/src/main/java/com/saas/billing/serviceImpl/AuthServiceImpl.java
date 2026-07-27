@@ -41,8 +41,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
 
-    @Override
-    public AuthResponse login(AuthRequest request) {
+   @Override
+@Transactional(readOnly = true)
+public AuthResponse login(AuthRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );

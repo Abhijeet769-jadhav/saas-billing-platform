@@ -1,5 +1,6 @@
 package com.saas.billing.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -22,6 +23,7 @@ public class Settings {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false, unique = true)
+    @JsonIgnore
     private Organization organization;
 
     @Column(name = "tax_registration_number")

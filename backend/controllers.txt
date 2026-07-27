@@ -1,0 +1,597 @@
+===== SubscriptionController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.*;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.SubscriptionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/subscriptions")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Subscriptions", description = "Endpoints for managing workspace subscriptions and plan transitions")
+public class SubscriptionController {
+
+    private final SubscriptionService subscriptionService;
+
+    @GetMapping
+    @Operation(summary = "Get current subscription details for the workspace")
+    public ResponseEntity<SubscriptionDto> getSubscription(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.getSubscription(userDetails.getOrganizationId()));
+    }
+
+    @PostMapping("/subscribe")
+    @Operation(summary = "Create initial workspace subscription")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<SubscriptionDto> subscribe(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SubscriptionChangeRequest request) {
+        return ResponseEntity.ok(subscriptionService.subscribe(userDetails.getOrganizationId(), request));
+    }
+
+    @PostMapping("/upgrade")
+    @Operation(summary = "Upgrade workspace plan tier")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<SubscriptionDto> upgrade(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SubscriptionChangeRequest request) {
+        return ResponseEntity.ok(subscriptionService.upgrade(userDetails.getOrganizationId(), request));
+    }
+
+    @PostMapping("/downgrade")
+    @Operation(summary = "Downgrade workspace plan tier")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<SubscriptionDto> downgrade(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SubscriptionChangeRequest request) {
+        return ResponseEntity.ok(subscriptionService.downgrade(userDetails.getOrganizationId(), request));
+    }
+
+    @PostMapping("/pause")
+    @Operation(summary = "Pause workspace active subscription")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> pause(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        subscriptionService.pause(userDetails.getOrganizationId());
+        return ResponseEntity.ok("Subscription paused successfully");
+    }
+
+    @PostMapping("/resume")
+    @Operation(summary = "Resume paused workspace subscription")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> resume(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        subscriptionService.resume(userDetails.getOrganizationId());
+        return ResponseEntity.ok("Subscription resumed successfully");
+    }
+
+    @PostMapping("/cancel")
+    @Operation(summary = "Cancel active subscription at current period end")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> cancel(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        subscriptionService.cancel(userDetails.getOrganizationId());
+        return ResponseEntity.ok("Subscription cancelled successfully");
+    }
+}
+
+===== InvoiceController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.InvoiceDto;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.InvoiceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.ByteArrayInputStream;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/invoices")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Invoices", description = "Endpoints for retrieving invoices and downloading billing PDF files")
+public class InvoiceController {
+
+    private final InvoiceService invoiceService;
+
+    @GetMapping
+    @Operation(summary = "Get list of all invoices for current organization")
+    public ResponseEntity<List<InvoiceDto>> getInvoices(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(invoiceService.getInvoices(userDetails.getOrganizationId()));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get details of specific invoice")
+    public ResponseEntity<InvoiceDto> getInvoiceById(@PathVariable("id") UUID id) {
+        return ResponseEntity.ok(invoiceService.getInvoiceById(id));
+    }
+
+    @GetMapping(value = "/{id}/download", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Download generated invoice PDF file")
+    public ResponseEntity<InputStreamResource> downloadInvoice(@PathVariable("id") UUID id) {
+        ByteArrayInputStream pdfStream = invoiceService.generatePdfInvoice(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "inline; filename=invoice-" + id + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(pdfStream));
+    }
+
+    @PostMapping("/{id}/email")
+    @Operation(summary = "Trigger sending invoice billing email notification")
+    public ResponseEntity<String> emailInvoice(@PathVariable("id") UUID id) {
+        invoiceService.emailInvoice(id);
+        return ResponseEntity.ok("Invoice email sent successfully");
+    }
+}
+
+===== UsageController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.UsageDto;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.UsageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/usage")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Usage Tracking", description = "Endpoints for tracking feature usage logs and limit checks")
+public class UsageController {
+
+    private final UsageService usageService;
+
+    @PostMapping("/log")
+    @Operation(summary = "Log new feature utilization event quantity")
+    @PreAuthorize("hasAnyRole('ORGANIZATION', 'USER')")
+    public ResponseEntity<String> logUsage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("metricKey") String metricKey,
+            @RequestParam("quantity") int quantity) {
+        usageService.logUsage(userDetails.getOrganizationId(), metricKey, quantity);
+        return ResponseEntity.ok("Usage logged successfully");
+    }
+
+    @GetMapping("/current")
+    @Operation(summary = "Get current usage quantities against limits for the active plan")
+    public ResponseEntity<List<UsageDto>> getCurrentUsage(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(usageService.getCurrentUsage(userDetails.getOrganizationId()));
+    }
+
+    @GetMapping("/check")
+    @Operation(summary = "Perform a quick check if a feature limit is reached")
+    public ResponseEntity<Boolean> checkLimit(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("metricKey") String metricKey,
+            @RequestParam(value = "increment", defaultValue = "1") int increment) {
+        boolean underLimit = usageService.checkLimit(userDetails.getOrganizationId(), metricKey, increment);
+        return ResponseEntity.ok(underLimit);
+    }
+}
+
+===== PaymentController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.PaymentDto;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.PaymentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/payments")
+@RequiredArgsConstructor
+@Tag(name = "Payments", description = "Endpoints for processing checkout sessions, webhooks, and refunds")
+public class PaymentController {
+
+    private final PaymentService paymentService;
+
+    @PostMapping("/checkout")
+    @SecurityRequirement(name = "BearerAuthentication")
+    @Operation(summary = "Create Stripe Checkout session redirect URL")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> checkout(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("planId") UUID planId,
+            @RequestParam("successUrl") String successUrl,
+            @RequestParam("cancelUrl") String cancelUrl) {
+        String sessionUrl = paymentService.createCheckoutSession(userDetails.getOrganizationId(), planId, successUrl, cancelUrl);
+        return ResponseEntity.ok(sessionUrl);
+    }
+
+    @GetMapping("/history")
+    @SecurityRequirement(name = "BearerAuthentication")
+    @Operation(summary = "Get payment transaction history for organization")
+    public ResponseEntity<List<PaymentDto>> getPaymentHistory(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(paymentService.getPaymentHistory(userDetails.getOrganizationId()));
+    }
+
+    @PostMapping("/webhook")
+    @Operation(summary = "Public Stripe Webhook event processing gateway")
+    public ResponseEntity<String> stripeWebhook(
+            @RequestBody String payload,
+            @RequestHeader(value = "Stripe-Signature", required = false) String sigHeader) {
+        paymentService.handleStripeWebhook(payload, sigHeader);
+        return ResponseEntity.ok("Webhook processed successfully");
+    }
+
+    @PostMapping("/refund/{paymentId}")
+    @SecurityRequirement(name = "BearerAuthentication")
+    @Operation(summary = "Refund a specific transaction (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> refund(@PathVariable("paymentId") UUID paymentId) {
+        paymentService.refundPayment(paymentId);
+        return ResponseEntity.ok("Payment refunded successfully");
+    }
+
+    @PostMapping("/retry/{invoiceId}")
+    @SecurityRequirement(name = "BearerAuthentication")
+    @Operation(summary = "Retry payment on a failed/open invoice")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> retry(@PathVariable("invoiceId") UUID invoiceId) {
+        paymentService.retryPayment(invoiceId);
+        return ResponseEntity.ok("Payment retry completed successfully");
+    }
+}
+
+===== SupportTicketController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.SupportTicketDto;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.SupportTicketService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/tickets")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Support Tickets", description = "Endpoints for user helpdesk tickets submission and resolution")
+public class SupportTicketController {
+
+    private final SupportTicketService supportTicketService;
+
+    @PostMapping
+    @Operation(summary = "Submit a new customer support ticket")
+    public ResponseEntity<SupportTicketDto> createTicket(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SupportTicketDto dto) {
+        return ResponseEntity.ok(supportTicketService.createTicket(userDetails.getOrganizationId(), userDetails.getId(), dto));
+    }
+
+    @GetMapping
+    @Operation(summary = "List all customer support tickets for organization workspace")
+    public ResponseEntity<List<SupportTicketDto>> getTickets(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(supportTicketService.getTickets(userDetails.getOrganizationId()));
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "List all support tickets across the platform (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<SupportTicketDto>> getAllTickets() {
+        return ResponseEntity.ok(supportTicketService.getAllTickets());
+    }
+
+    @PostMapping("/{ticketId}/resolve")
+    @Operation(summary = "Resolve open support ticket status (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SupportTicketDto> resolveTicket(@PathVariable("ticketId") UUID ticketId) {
+        return ResponseEntity.ok(supportTicketService.resolveTicket(ticketId));
+    }
+}
+
+===== OrganizationController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.*;
+import com.saas.billing.entity.Settings;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.OrganizationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/organizations")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Organizations", description = "Endpoints for managing workspace organizations and settings")
+public class OrganizationController {
+
+    private final OrganizationService organizationService;
+
+    @GetMapping("/current")
+    @Operation(summary = "Get current organization details")
+    public ResponseEntity<OrganizationDto> getCurrentOrg(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(organizationService.getOrganizationById(userDetails.getOrganizationId()));
+    }
+
+    @PutMapping("/current")
+    @Operation(summary = "Update current organization details")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<OrganizationDto> updateCurrentOrg(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody OrganizationDto dto) {
+        return ResponseEntity.ok(organizationService.updateOrganization(userDetails.getOrganizationId(), dto));
+    }
+
+    @GetMapping("/members")
+    @Operation(summary = "List all workspace organization members")
+    public ResponseEntity<List<UserDto>> getMembers(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(organizationService.getMembers(userDetails.getOrganizationId()));
+    }
+
+    @PostMapping("/members")
+    @Operation(summary = "Invite and add a member user to organization workspace")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> addMember(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("email") String email,
+            @RequestParam("role") String role) {
+        organizationService.addMember(userDetails.getOrganizationId(), email, role);
+        return ResponseEntity.ok("Member user added successfully");
+    }
+
+    @DeleteMapping("/members/{userId}")
+    @Operation(summary = "Remove user member from organization workspace")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<String> removeMember(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable("userId") UUID userId) {
+        organizationService.removeMember(userDetails.getOrganizationId(), userId);
+        return ResponseEntity.ok("Member user removed successfully");
+    }
+
+    @GetMapping("/settings")
+    @Operation(summary = "Get current organization billing settings")
+    public ResponseEntity<Settings> getSettings(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(organizationService.getSettings(userDetails.getOrganizationId()));
+    }
+
+    @PutMapping("/settings")
+    @Operation(summary = "Update organization billing settings (GSTIN, Tax info)")
+    @PreAuthorize("hasRole('ORGANIZATION')")
+    public ResponseEntity<Settings> updateSettings(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody Settings settings) {
+        return ResponseEntity.ok(organizationService.updateSettings(userDetails.getOrganizationId(), settings));
+    }
+}
+
+===== AnalyticsController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.AnalyticsDto;
+import com.saas.billing.security.CustomUserDetails;
+import com.saas.billing.service.AnalyticsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.ByteArrayInputStream;
+
+@RestController
+@RequestMapping("/api/analytics")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Analytics", description = "Endpoints for platform metrics, MRR, ARR, and CSV reports export")
+public class AnalyticsController {
+
+    private final AnalyticsService analyticsService;
+
+    @GetMapping("/platform")
+    @Operation(summary = "Get global billing analytics dashboard metrics (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AnalyticsDto> getPlatformAnalytics() {
+        return ResponseEntity.ok(analyticsService.getPlatformAnalytics());
+    }
+
+    @GetMapping("/workspace")
+    @Operation(summary = "Get workspace specific billing analytics dashboard metrics")
+    public ResponseEntity<AnalyticsDto> getWorkspaceAnalytics(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(analyticsService.getOrganizationAnalytics(userDetails.getOrganizationId()));
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    @Operation(summary = "Export platform revenue log sheet as CSV (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<InputStreamResource> exportRevenueReport() {
+        ByteArrayInputStream csvStream = analyticsService.exportRevenueReportCsv();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=revenue-report.csv");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(new InputStreamResource(csvStream));
+    }
+}
+
+===== AuthController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.*;
+import com.saas.billing.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Endpoints for user registration and JWT authentication")
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/login")
+    @Operation(summary = "Authenticate user and return JWT tokens")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/register")
+    @Operation(summary = "Register user and initialize new tenant organization")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
+
+    @GetMapping("/verify-email")
+    @Operation(summary = "Verify user email account with token")
+    public ResponseEntity<String> verifyEmail(@RequestParam("token") String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok("Email verified successfully");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Send password reset link to registered email")
+    public ResponseEntity<String> forgotPassword(@RequestParam("email") String email) {
+        authService.forgotPassword(email);
+        return ResponseEntity.ok("Password reset email sent successfully");
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset account password with reset token")
+    public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestParam("password") String password) {
+        authService.resetPassword(token, password);
+        return ResponseEntity.ok("Password has been reset successfully");
+    }
+
+    @PostMapping("/refresh-token")
+    @Operation(summary = "Generate new access token from refresh token")
+    public ResponseEntity<AuthResponse> refreshToken(@RequestParam("token") String token) {
+        return ResponseEntity.ok(authService.refreshToken(token));
+    }
+}
+
+===== PlanController.java =====
+package com.saas.billing.controller;
+
+import com.saas.billing.dto.PlanDto;
+import com.saas.billing.service.PlanService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/plans")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "BearerAuthentication")
+@Tag(name = "Plans", description = "Endpoints for managing and querying subscription plans")
+public class PlanController {
+
+    private final PlanService planService;
+
+    @GetMapping
+    @Operation(summary = "Get list of all active subscription plans")
+    public ResponseEntity<List<PlanDto>> getAllPlans() {
+        return ResponseEntity.ok(planService.getAllPlans());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get details of a specific plan")
+    public ResponseEntity<PlanDto> getPlanById(@PathVariable("id") UUID id) {
+        return ResponseEntity.ok(planService.getPlanById(id));
+    }
+
+    @PostMapping
+    @Operation(summary = "Create a new subscription plan (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PlanDto> createPlan(@RequestBody PlanDto dto) {
+        return ResponseEntity.ok(planService.createPlan(dto));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update an existing subscription plan (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PlanDto> updatePlan(@PathVariable("id") UUID id, @RequestBody PlanDto dto) {
+        return ResponseEntity.ok(planService.updatePlan(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete an existing plan (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deletePlan(@PathVariable("id") UUID id) {
+        planService.deletePlan(id);
+        return ResponseEntity.ok("Plan deleted successfully");
+    }
+}

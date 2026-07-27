@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,15 @@ import java.util.UUID;
 
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, UUID> {
-    Optional<Subscription> findByOrganizationId(UUID organizationId);
+    @Query("""
+    SELECT s
+    FROM Subscription s
+    JOIN FETCH s.plan
+    JOIN FETCH s.organization
+    WHERE s.organization.id = :organizationId
+    """)
+Optional<Subscription> findByOrganizationId(
+        @Param("organizationId") UUID organizationId);
     Optional<Subscription> findByStripeSubscriptionId(String stripeSubscriptionId);
     List<Subscription> findByStatus(String status);
 

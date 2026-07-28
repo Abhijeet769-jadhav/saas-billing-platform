@@ -21,7 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "BearerAuthentication")
+@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Invoices", description = "Endpoints for retrieving invoices and downloading billing PDF files")
 public class InvoiceController {
 

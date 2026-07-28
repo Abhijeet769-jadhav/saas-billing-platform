@@ -69,7 +69,8 @@ logging:
   level:
     root: INFO
     com.saas.billing: INFO                  # Changed
-    org.springframework.security: INFO      # Changed
+    org.springframework.security: DEBUG
+    com.saas.billing.security: DEBUG
     org.hibernate.SQL: WARN                 # Changed
     org.hibernate.type.descriptor.sql.BasicBinder: WARN  # Changed
 
